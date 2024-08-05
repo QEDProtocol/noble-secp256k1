@@ -1,17 +1,17 @@
 /*! noble-secp256k1 - MIT License (c) 2019 Paul Miller (paulmillr.com) */
-const B256 = 2n ** 256n; // secp256k1 is short weierstrass curve
-const P = B256 - 0x1000003d1n; // curve's field prime
-const N = B256 - 0x14551231950b75fc4402da1732fc9bebfn; // curve (group) order
-const Gx = 0x79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798n; // base point x
-const Gy = 0x483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8n; // base point y
-const CURVE = { p: P, n: N, a: 0n, b: 7n, Gx, Gy }; // exported variables incl. a, b
+const B256 = BigInt("115792089237316195423570985008687907853269984665640564039457584007913129639936"); // secp256k1 is short weierstrass curve
+const P = B256 - BigInt("0x1000003d1"); // curve's field prime
+const N = B256 - BigInt("0x14551231950b75fc4402da1732fc9bebf"); // curve (group) order
+const Gx = BigInt("0x79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"); // base point x
+const Gy = BigInt("0x483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8"); // base point y
+const CURVE = { p: P, n: N, a: BigInt(0), b: BigInt(7), Gx, Gy }; // exported variables incl. a, b
 const fLen = 32; // field / group byte length
 const crv = (x) => mod(mod(x * x) * x + CURVE.b); // x³ + ax + b weierstrass formula; a=0
 const err = (m = '') => { throw new Error(m); }; // error helper, messes-up stack trace
 const big = (n) => typeof n === 'bigint'; // is big integer
 const str = (s) => typeof s === 'string'; // is string
-const fe = (n) => big(n) && 0n < n && n < P; // is field element (invertible)
-const ge = (n) => big(n) && 0n < n && n < N; // is group element
+const fe = (n) => big(n) && BigInt(0) < n && n < P; // is field element (invertible)
+const ge = (n) => big(n) && BigInt(0) < n && n < N; // is group element
 const isu8 = (a) => (a instanceof Uint8Array ||
     (a != null && typeof a === 'object' && a.constructor.name === 'Uint8Array'));
 const au8 = (a, l) => // assert is Uint8Array (of specific length)
@@ -19,7 +19,7 @@ const au8 = (a, l) => // assert is Uint8Array (of specific length)
     err('Uint8Array expected') : a;
 const u8n = (data) => new Uint8Array(data); // creates Uint8Array
 const toU8 = (a, len) => au8(str(a) ? h2b(a) : u8n(au8(a)), len); // norm(hex/u8a) to u8a
-const mod = (a, b = P) => { let r = a % b; return r >= 0n ? r : b + r; }; // mod division
+const mod = (a, b = P) => { let r = a % b; return r >= BigInt(0) ? r : b + r; }; // mod division
 const isPoint = (p) => (p instanceof Point ? p : err('Point expected')); // is 3d point
 class Point {
     constructor(px, py, pz) {
@@ -28,7 +28,7 @@ class Point {
         this.pz = pz;
     } //3d=less inversions
     static fromAffine(p) {
-        return ((p.x === 0n) && (p.y === 0n)) ? Point.ZERO : new Point(p.x, p.y, 1n);
+        return ((p.x === BigInt(0)) && (p.y === BigInt(0))) ? Point.ZERO : new Point(p.x, p.y, BigInt(1));
     }
     static fromHex(hex) {
         hex = toU8(hex); // convert hex string to Uint8Array
@@ -39,14 +39,14 @@ class Point {
             if (!fe(x))
                 err('Point hex invalid: x not FE'); // with byte 0x02 or 0x03. Check if 0<x<P
             let y = sqrt(crv(x)); // x³ + ax + b is right side of equation
-            const isYOdd = (y & 1n) === 1n; // y² is equivalent left-side. Calculate y²:
+            const isYOdd = (y & BigInt(1)) === BigInt(1); // y² is equivalent left-side. Calculate y²:
             const headOdd = (head & 1) === 1; // y = √y²; there are two solutions: y, -y
             if (headOdd !== isYOdd)
                 y = mod(-y); // determine proper solution
-            p = new Point(x, y, 1n); // create point
+            p = new Point(x, y, BigInt(1)); // create point
         } // Uncompressed points: 65b, start with 0x04
         if (len === 65 && head === 0x04)
-            p = new Point(x, slcNum(tail, fLen, 2 * fLen), 1n);
+            p = new Point(x, slcNum(tail, fLen, 2 * fLen), BigInt(1));
         return p ? p.ok() : err('Point is not on curve'); // Verify the result
     }
     static fromPrivateKey(k) { return G.mul(toPriv(k)); } // Create point from a private key.
@@ -65,8 +65,8 @@ class Point {
         const { px: X1, py: Y1, pz: Z1 } = this; // free formula from Renes-Costello-Batina
         const { px: X2, py: Y2, pz: Z2 } = isPoint(other); // https://eprint.iacr.org/2015/1060, algo 1
         const { a, b } = CURVE; // Cost: 12M + 0S + 3*a + 3*b3 + 23add
-        let X3 = 0n, Y3 = 0n, Z3 = 0n;
-        const b3 = mod(b * 3n);
+        let X3 = BigInt(0), Y3 = BigInt(0), Z3 = BigInt(0);
+        const b3 = mod(b * BigInt(3));
         let t0 = mod(X1 * X2), t1 = mod(Y1 * Y2), t2 = mod(Z1 * Z2), t3 = mod(X1 + Y1); // step 1
         let t4 = mod(X2 + Y2); // step 5
         t3 = mod(t3 * t4);
@@ -107,15 +107,15 @@ class Point {
         return new Point(X3, Y3, Z3);
     }
     mul(n, safe = true) {
-        if (!safe && n === 0n)
+        if (!safe && n === BigInt(0))
             return I; // in unsafe mode, allow zero
         if (!ge(n))
             err('invalid scalar'); // must be 0 < n < CURVE.n
         if (this.equals(G))
             return wNAF(n).p; // use precomputes for base point
         let p = I, f = G; // init result point & fake point
-        for (let d = this; n > 0n; d = d.double(), n >>= 1n) { // double-and-add ladder
-            if (n & 1n)
+        for (let d = this; n > BigInt(0); d = d.double(), n >>= BigInt(1)) { // double-and-add ladder
+            if (n & BigInt(1))
                 p = p.add(d); // if bit is present, add to point
             else if (safe)
                 f = f.add(d); // if not, add to fake for timing safety
@@ -128,11 +128,11 @@ class Point {
     toAffine() {
         const { px: x, py: y, pz: z } = this; // (x, y, z) ∋ (x=x/z, y=y/z)
         if (this.equals(I))
-            return { x: 0n, y: 0n }; // fast-path for zero point
-        if (z === 1n)
+            return { x: BigInt(0), y: BigInt(0) }; // fast-path for zero point
+        if (z === BigInt(1))
             return { x, y }; // if z is 1, pass affine coordinates as-is
         const iz = inv(z); // z^-1: invert z
-        if (mod(z * iz) !== 1n)
+        if (mod(z * iz) !== BigInt(1))
             err('invalid inverse'); // (z * z^-1) must be 1, otherwise bad math
         return { x: mod(x * iz), y: mod(y * iz) }; // x = x*z^-1; y = y*z^-1
     }
@@ -148,15 +148,15 @@ class Point {
     ok() { return this.assertValidity(); }
     toHex(isCompressed = true) {
         const { x, y } = this.aff(); // convert to 2d xy affine point
-        const head = isCompressed ? ((y & 1n) === 0n ? '02' : '03') : '04'; // 0x02, 0x03, 0x04 prefix
+        const head = isCompressed ? ((y & BigInt(1)) === BigInt(0) ? '02' : '03') : '04'; // 0x02, 0x03, 0x04 prefix
         return head + n2h(x) + (isCompressed ? '' : n2h(y)); // prefix||x and ||y
     }
     toRawBytes(isCompressed = true) {
         return h2b(this.toHex(isCompressed)); // re-use toHex(), convert hex to bytes
     }
 }
-Point.BASE = new Point(Gx, Gy, 1n); // Generator / base point
-Point.ZERO = new Point(0n, 1n, 0n); // Identity / zero point
+Point.BASE = new Point(Gx, Gy, BigInt(1)); // Generator / base point
+Point.ZERO = new Point(BigInt(0), BigInt(1), BigInt(0)); // Identity / zero point
 const { BASE: G, ZERO: I } = Point; // Generator, identity points
 const padh = (n, pad) => n.toString(16).padStart(pad, '0');
 const b2h = (b) => Array.from(b).map(e => padh(e, 2)).join(''); // bytes to hex
@@ -178,7 +178,7 @@ const h2b = (hex) => {
 const b2n = (b) => BigInt('0x' + (b2h(b) || '0')); // bytes to number
 const slcNum = (b, from, to) => b2n(b.slice(from, to)); // slice bytes num
 const n2b = (num) => {
-    return big(num) && num >= 0n && num < B256 ? h2b(padh(num, 2 * fLen)) : err('bigint expected');
+    return big(num) && num >= BigInt(0) && num < B256 ? h2b(padh(num, 2 * fLen)) : err('bigint expected');
 };
 const n2h = (num) => b2h(n2b(num)); // number to 32b hex
 const concatB = (...arrs) => {
@@ -188,20 +188,20 @@ const concatB = (...arrs) => {
     return r;
 };
 const inv = (num, md = P) => {
-    if (num === 0n || md <= 0n)
+    if (num === BigInt(0) || md <= BigInt(0))
         err('no inverse n=' + num + ' mod=' + md); // no neg exponent for now
-    let a = mod(num, md), b = md, x = 0n, y = 1n, u = 1n, v = 0n;
-    while (a !== 0n) { // uses euclidean gcd algorithm
+    let a = mod(num, md), b = md, x = BigInt(0), y = BigInt(1), u = BigInt(1), v = BigInt(0);
+    while (a !== BigInt(0)) { // uses euclidean gcd algorithm
         const q = b / a, r = b % a; // not constant-time
         const m = x - u * q, n = y - v * q;
         b = a, a = r, x = u, y = v, u = m, v = n;
     }
-    return b === 1n ? mod(x, md) : err('no inverse'); // b is gcd at this point
+    return b === BigInt(1) ? mod(x, md) : err('no inverse'); // b is gcd at this point
 };
 const sqrt = (n) => {
-    let r = 1n; // So, a special, fast case. Paper: "Square Roots from 1;24,51,10 to Dan Shanks".
-    for (let num = n, e = (P + 1n) / 4n; e > 0n; e >>= 1n) { // powMod: modular exponentiation.
-        if (e & 1n)
+    let r = BigInt(1); // So, a special, fast case. Paper: "Square Roots from 1;24,51,10 to Dan Shanks".
+    for (let num = n, e = (P + BigInt(1)) / BigInt(4); e > BigInt(0); e >>= BigInt(1)) { // powMod: modular exponentiation.
+        if (e & BigInt(1))
             r = (r * num) % P; // Uses exponentiation by squaring.
         num = (num * num) % P; // Not constant-time.
     }
@@ -212,7 +212,7 @@ const toPriv = (p) => {
         p = b2n(toU8(p, fLen)); // convert to bigint when bytes
     return ge(p) ? p : err('private key out of range'); // check if bigint is in range
 };
-const moreThanHalfN = (n) => n > (N >> 1n); // if a number is bigger than CURVE.n/2
+const moreThanHalfN = (n) => n > (N >> BigInt(1)); // if a number is bigger than CURVE.n/2
 const getPublicKey = (privKey, isCompressed = true) => {
     return Point.fromPrivateKey(privKey).toRawBytes(isCompressed); // 33b or 65b output
 };
@@ -263,7 +263,7 @@ const bits2int_modN = (bytes) => {
 };
 const i2o = (num) => n2b(num); // int to octets
 const cr = () => // We support: 1) browsers 2) node.js 19+ 3) deno, other envs with crypto
- typeof globalThis === 'object' && 'crypto' in globalThis ? globalThis.crypto : undefined;
+ typeof globalThis === 'object' && 'crypto' in globalThis && 'subtle' in globalThis.crypto ? globalThis.crypto : undefined;
 let _hmacSync; // Can be redefined by use in utils; built-ins don't provide it
 const optS = { lowS: true }; // opts for sign()
 const optV = { lowS: true }; // standard opts for verify()
@@ -294,13 +294,13 @@ const prepSig = (msgh, priv, opts = optS) => {
         const ik = inv(k, N); // k^-1 mod n, NOT mod P
         const q = G.mul(k).aff(); // q = Gk
         const r = mod(q.x, N); // r = q.x mod n
-        if (r === 0n)
+        if (r === BigInt(0))
             return; // r=0 invalid
         const s = mod(ik * mod(m + mod(d * r, N), N), N); // s = k^-1(m + rd) mod n
-        if (s === 0n)
+        if (s === BigInt(0))
             return; // s=0 invalid
         let normS = s; // normalized S
-        let rec = (q.x === r ? 0 : 2) | Number(q.y & 1n); // recovery bit
+        let rec = (q.x === r ? 0 : 2) | Number(q.y & BigInt(1)); // recovery bit
         if (lowS && moreThanHalfN(s)) { // if lowS was passed, ensure s is always
             normS = mod(-s, N); // in the bottom half of CURVE.n
             rec ^= 1;
@@ -428,7 +428,7 @@ const hashToPrivateKey = (hash) => {
     const minLen = fLen + 8; // being neglible.
     if (hash.length < minLen || hash.length > 1024)
         err('expected proper params');
-    const num = mod(b2n(hash), N - 1n) + 1n; // takes at least n+8 bytes
+    const num = mod(b2n(hash), N - BigInt(1)) + BigInt(1); // takes at least n+8 bytes
     return n2b(num);
 };
 const etc = {
@@ -461,7 +461,7 @@ const utils = {
         return false;
     } },
     randomPrivateKey: () => hashToPrivateKey(etc.randomBytes(fLen + 16)), // FIPS 186 B.4.1.
-    precompute(w = 8, p = G) { p.multiply(3n); w; return p; }, // no-op
+    precompute(w = 8, p = G) { p.multiply(BigInt(3)); w; return p; }, // no-op
 };
 Object.defineProperties(etc, { hmacSha256Sync: {
         configurable: false, get() { return _hmacSync; }, set(f) { if (!_hmacSync)
@@ -500,7 +500,7 @@ const wNAF = (n) => {
         n >>= shiftBy; // shift number by W bits.
         if (wbits > wsize) {
             wbits -= maxNum;
-            n += 1n;
+            n += BigInt(1);
         } // split if bits > max: +224 => 256-32
         const off1 = off, off2 = off + Math.abs(wbits) - 1; // offsets, evaluate both
         const cnd1 = w % 2 !== 0, cnd2 = wbits < 0; // conditions, evaluate both
